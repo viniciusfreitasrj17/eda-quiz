@@ -1,4 +1,6 @@
 import { QuizRepositoryProtocol } from "../../domain/repositories/QuizRepositoryProtocol"
+import { MailerMemory } from "../../infra/services/MailerMemory"
+import { MailerProtocol } from "../services/MailerProtocol"
 
 export interface SubmitQuizInput {
   id: number,
@@ -14,6 +16,7 @@ export interface SubmitQuizOutput {
 export class SubmitQuiz {
   constructor(
     readonly quizRepository: QuizRepositoryProtocol,
+    readonly mailer: MailerProtocol = new MailerMemory(),
   ){}
 
   async execute(input: SubmitQuizInput): Promise<SubmitQuizOutput> {
@@ -25,6 +28,8 @@ export class SubmitQuiz {
       }
     }
     const grade = (correctAnswers/quiz.questions.length) * 100
+    const message = `Hello ${input.name}, your quiz grade id ${grade}`
+    await this.mailer.send(input.email, message)
     return { grade }
   }
 }
