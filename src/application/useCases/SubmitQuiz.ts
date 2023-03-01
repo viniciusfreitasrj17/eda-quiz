@@ -1,6 +1,6 @@
-import { QuizRepositoryProtocol } from "../../domain/repositories/QuizRepositoryProtocol"
-import { MailerMemory } from "../../infra/services/MailerMemory"
-import { MailerProtocol } from "../services/MailerProtocol"
+import { QuizSubmitted } from "../../domain/events/QuisSumitted"
+import { MediatorMemory } from "../../infra/mediator/MediatorMemory"
+import { MediatorProtocol } from "../mediator/MediatorProtocol"
 
 export interface SubmitQuizInput {
   id: number,
@@ -9,27 +9,13 @@ export interface SubmitQuizInput {
   answers: { [id: string]:string },
 }
 
-export interface SubmitQuizOutput {
-  grade: number
-}
-
 export class SubmitQuiz {
   constructor(
-    readonly quizRepository: QuizRepositoryProtocol,
-    readonly mailer: MailerProtocol = new MailerMemory(),
+    readonly mediator: MediatorProtocol = new MediatorMemory(),
   ){}
 
-  async execute(input: SubmitQuizInput): Promise<SubmitQuizOutput> {
-    const quiz = await this.quizRepository.get(input.id)
-    let correctAnswers = 0
-    for (const question of quiz.questions) {
-      if (input.answers[question.id] === question.correctAnswers) {
-        correctAnswers++
-      }
-    }
-    const grade = (correctAnswers/quiz.questions.length) * 100
-    const message = `Hello ${input.name}, your quiz grade id ${grade}`
-    await this.mailer.send(input.email, message)
-    return { grade }
+  async execute(input: SubmitQuizInput): Promise<void> {
+    const event = new QuizSubmitted(input.id, input.name, input.email, input.answers)
+    this.mediator.publish(event)
   }
 }
